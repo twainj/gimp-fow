@@ -5,69 +5,35 @@ import gtk
 import gobject
 
 
+def dOut(text):
+    pdb.gimp_message(text)
 
+# Entry functions to register (implementation details start around line 140)
 def fow_config(image, layer):
     dlg = FowConfigDlg(image, layer)
     dlg.set_title("Config Fog-of-War")
     dlg.show_all()
     
-def fow_setupHintLayer(image, layer):
-    hintLayer = FowHintLayer(image, layer)
-    hintLayer.create()
+def fow_setupHintLayer(image):
+    hintLayer = FowHintLayer(image)
     
-def fow_clearFow(image, layer):
-    clearAction = ClearFowAction(image, layer)
+def fow_clearFow(image):
+    dOut("testing clearFow")
+    clearAction = ClearFowAction(image)
     clearAction.execute()
     
 def fow_openDoor(image, layer):
     actPt = CurrentPath(image, layer).get_primePt()
-    hintLayer = FowHintLayer(image, layer)
-    hintLayer.load()
+    hintLayer = FowHintLayer(image)
     hintLayer.openDoorAt(actPt)
     
 def fow_closeDoor(image, layer):
     actPt = CurrentPath(image, layer).get_primePt()
-    hintLayer = FowHintLayer(image, layer)
+    hintLayer = FowHintLayer(image)
     hintLayer.load()
     hintLayer.closeDoorAt(actPt)
 
-
-# TODO: Register a function that opens the config dialog
-
-
-# TODO: Registar a function to set up the hint layer
-# TODO: Register a function to clear the Fog-of-War
-# TODO: Register a function to open a door
-# TODO: Register a function to close a door
-
-# TODO Class to manage the functionality of the config dlg
-class FowConfigDlg(gtk.Window):
-    def __init__(self, image, layer):
-        super(FowConfigDlg, self).__init__()
-        
-    # TODO: input for hint clear color
-    # TODO: input for hint block color
-    # TODO: input for open door color
-    # TODO: input for closed door color
-    # TODO: input for wall thickness (px)
-    # TODO: input for visibility distance
-    
-# TODO: Implement hint layer creation
-class FowHintLayer():
-    def __init__(self, image, layer):
-    def load():
-    def create():
-
-class CurrentPath():
-    def __init__(self, image, layer):
-    def get_primePt():
-
-# TODO: implement action to clear the Fog-of-War
-class ClearFowAction():
-    def __init__(self, image, layer):
-    # TODO: implement function to do the block fill algorithm for the fow clear
-    def execute():
-
+# Entry function Registrations
 register(
     "fow-config",
     N_("Configure Fog-of-War"),
@@ -84,8 +50,139 @@ register(
     ],
     [],
     fow_config,
-    menu="<Image>/Filters/Decor",
+    menu="<Image>/Tools/Fog-of-War",
     domain=("gimp20-python", gimp.locale_directory)
     )
+
+register(
+    "fow-hintlayer-setup",
+    N_("Create a fog-of-war hint layer"),
+    "Creates a layer where you can add hints for how to clear the fog of war",
+    "Jason Jones",
+    "Jason Jones",
+    "2021",
+    N_("Setup _Hint Layer"),
+    "RGB*, GRAY*",
+    [
+        (PF_IMAGE, "image",       "Input image", None),
+    ],
+    [],
+    fow_setupHintLayer,
+    menu="<Image>/Tools/Fog-of-War",
+    domain=("gimp20-python", gimp.locale_directory)
+    )
+
+register(
+    "fow-clear",
+    N_("Clear the Fog of War from the current path"),
+    "Clears the fog of war according to current paramenters, starting from the first point of the current path.",
+    "Jason Jones",
+    "Jason Jones",
+    "2021",
+    N_("Clear here"),
+    "RGB*, GRAY*",
+    [
+        (PF_IMAGE, "image",       "Input image", None),
+    ],
+    [],
+    fow_clearFow,
+    menu="<Image>/Tools/Fog-of-War",
+    domain=("gimp20-python", gimp.locale_directory)
+    )
+
+register(
+    "fow-open-door",
+    N_("Mark a door on the hint layer as 'open'"),
+    "Sets a door (as marked on the hint layer) at the current path as 'open' so that the fog can be cleared through it",
+    "Jason Jones",
+    "Jason Jones",
+    "2021",
+    N_("Open door"),
+    "RGB*, GRAY*",
+    [
+        (PF_IMAGE, "image",       "Input image", None),
+        (PF_LAYER, "layer", "Input layer", None),
+        (PF_DRAWABLE, "drawable", "Input drawable", None),
+    ],
+    [],
+    fow_openDoor,
+    menu="<Image>/Tools/Fog-of-War",
+    domain=("gimp20-python", gimp.locale_directory)
+    )
+
+register(
+    "fow-close-door",
+    N_("Mark a door on the hint layer as 'closed'"),
+    "Sets a door (as marked on the hint layer) at the current path as 'closed' so that the fog cannot be cleared through it",
+    "Jason Jones",
+    "Jason Jones",
+    "2021",
+    N_("Close door"),
+    "RGB*, GRAY*",
+    [
+        (PF_IMAGE, "image",       "Input image", None),
+        (PF_LAYER, "layer", "Input layer", None),
+        (PF_DRAWABLE, "drawable", "Input drawable", None),
+    ],
+    [],
+    fow_closeDoor,
+    menu="<Image>/Tools/Fog-of-War",
+    domain=("gimp20-python", gimp.locale_directory)
+    )
+
+
+# Classes to implement the entry functions
+
+# TODO Class to manage the functionality of the config dlg
+class FowConfigDlg(gtk.Window):
+    def __init__(self, image, layer):
+        super(FowConfigDlg, self).__init__()
+        
+    # TODO: input for hint clear color
+    # TODO: input for hint block color
+    # TODO: input for open door color
+    # TODO: input for closed door color
+    # TODO: input for wall thickness (px)
+    # TODO: input for visibility distance
+    
+class FowHintLayer():
+    def __init__(self, image):
+        self.image = image
+        ls = [l for l in self.image.layers if l.name == 'fow-hint']
+        if len(ls) > 0:
+            self.layer = ls[0]
+            # TODO: Maybe bring this layer to the top for easy edit?
+        else:
+            self.image.new_layer('fow-hint', self.image.width, self.image.height, 0,0,1,0,1,NORMAL_MODE, FILL_TRANSPARENT)
+
+        
+class CurrentPath():
+    def __init__(self, image):
+        self.image = image
+        
+    def get_primePt(self):
+        vectors = pdb.gimp_image_get_active_vectors(self.image)
+        return vectors.strokes[0].points[0][2:4]
+
+# TODO: implement action to clear the Fog-of-War
+class ClearFowAction():
+    def __init__(self, image):
+        self.image = image
+        
+    # TODO: implement function to do the block fill algorithm for the fow clear
+    def execute(self):
+        dOut("ClearFowAction.execute is not fully implemented yet")
+        hintLayer = FowHintLayer(self.image)
+        # TODO: Get map layer to reference in algorithm
+        # TODO: Get fog layer for output from the algorithm
+        curPath = CurrentPath(self.image)
+        dOut("running guts")
+        x1,y1 = curPath.get_primePt()
+        dOut("got pts")
+        dOut("The first Point is (" + str(x1) + ", " + str(y1) + ")")
+        
+        # TODO: Run algorithm starting from that point
+
+
 
 main()
