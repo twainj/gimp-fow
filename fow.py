@@ -133,30 +133,45 @@ register(
 
 # Classes to implement the entry functions
 
+class FowConfig(object):
+    def __init__(self):
+        self.visibility = 10 * 12 # pixels/box * boxes/visibility. Assuming box= 5ft, and visibility is 60ft
+        self.hintLayerName = 'fow-hint'
+        self.mapLayerName = 'fow-map'
+        self.fogLayerName = 'fow-fog'
+
 # TODO Class to manage the functionality of the config dlg
 class FowConfigDlg(gtk.Window):
     def __init__(self, image, layer):
         super(FowConfigDlg, self).__init__()
         
-    # TODO: input for hint clear color
-    # TODO: input for hint block color
-    # TODO: input for open door color
-    # TODO: input for closed door color
-    # TODO: input for wall thickness (px)
-    # TODO: input for visibility distance
+        # TODO: input for hint clear color
+        # TODO: input for hint block color
+        # TODO: input for open door color
+        # TODO: input for closed door color
+        # TODO: input for wall thickness (px)
+        # TODO: input for visibility distance
     
-class FowHintLayer():
-    def __init__(self, image):
+class FowLayer(object):
+    def __init__(self, image, name):
+        dOut("in FowLayer ctor")
         self.image = image
-        ls = [l for l in self.image.layers if l.name == 'fow-hint']
+        self.name = name
+        ls = [l for l in self.image.layers if l.name == self.name]
         if len(ls) > 0:
             self.layer = ls[0]
             # TODO: Maybe bring this layer to the top for easy edit?
         else:
-            self.image.new_layer('fow-hint', self.image.width, self.image.height, 0,0,1,0,1,NORMAL_MODE, FILL_TRANSPARENT)
+            self.image.new_layer(self.name, self.image.width, self.image.height, 0,0,1,0,1,NORMAL_MODE, FILL_TRANSPARENT)
 
-        
-class CurrentPath():
+class FowHintLayer(FowLayer):
+    def __init__(self, image):
+        dOut("in FowHintLayer ctor")
+        cfg = FowConfig()
+        dOut("FHL got config: " + cfg.hintLayerName)
+        super(FowHintLayer, self).__init__(image, cfg.hintLayerName)
+
+class CurrentPath(object):
     def __init__(self, image):
         self.image = image
         
@@ -165,16 +180,19 @@ class CurrentPath():
         return vectors.strokes[0].points[0][2:4]
 
 # TODO: implement action to clear the Fog-of-War
-class ClearFowAction():
+class ClearFowAction(object):
     def __init__(self, image):
         self.image = image
         
     # TODO: implement function to do the block fill algorithm for the fow clear
     def execute(self):
         dOut("ClearFowAction.execute is not fully implemented yet")
+        cfg = FowConfig()
         hintLayer = FowHintLayer(self.image)
-        # TODO: Get map layer to reference in algorithm
-        # TODO: Get fog layer for output from the algorithm
+        mapLayer = FowLayer(self.image, cfg.mapLayerName)
+        fogLayer = FowLayer(self.image, cfg.fogLayerName)
+        
+
         curPath = CurrentPath(self.image)
         dOut("running guts")
         x1,y1 = curPath.get_primePt()
@@ -184,5 +202,5 @@ class ClearFowAction():
         # TODO: Run algorithm starting from that point
 
 
-
-main()
+if __name__ == "__main__":
+    main()
