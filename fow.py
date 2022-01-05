@@ -3,6 +3,7 @@
 from gimpfu import *
 import gtk
 import gobject
+from array import array
 
 
 def dOut(text):
@@ -139,6 +140,8 @@ class FowConfig(object):
         self.hintLayerName = 'fow-hint'
         self.mapLayerName = 'fow-map'
         self.fogLayerName = 'fow-fog'
+        self.wallMinThickness = 5
+        self.visibilityDist = 100
 
 # TODO Class to manage the functionality of the config dlg
 class FowConfigDlg(gtk.Window):
@@ -162,7 +165,12 @@ class FowLayer(object):
             self.layer = ls[0]
             # TODO: Maybe bring this layer to the top for easy edit?
         else:
-            self.image.new_layer(self.name, self.image.width, self.image.height, 0,0,1,0,1,NORMAL_MODE, FILL_TRANSPARENT)
+            self.layer = self.image.new_layer(self.name, self.image.width, self.image.height, 0,0,1,0,1,NORMAL_MODE, FILL_TRANSPARENT)
+    
+    def setRegion(self, x,y,w,h,writable):
+        self.region = self.layer.get_pixel_rgn(x, y, w, h, writable, writable)
+        self._pixels = array("B", self.region[0:w, 0:h])
+
 
 class FowHintLayer(FowLayer):
     def __init__(self, image):
@@ -194,12 +202,33 @@ class ClearFowAction(object):
         
 
         curPath = CurrentPath(self.image)
-        dOut("running guts")
         x1,y1 = curPath.get_primePt()
-        dOut("got pts")
-        dOut("The first Point is (" + str(x1) + ", " + str(y1) + ")")
         
         # TODO: Run algorithm starting from that point
+        # Using pixel region thing...
+        # setup - initialize the regions and get their contents into arrays:
+        rgnX,rgnY = x1 - cfg.visibilityDist, y1 - cfg.visibilityDist
+        width = height = cfg.visibilityDist * 2
+        
+        hintLayer.setRegion(x, y, width, height, False)
+        mapLayer.setRegion(x, y, width, height, False)
+        fogLayer.setRegion(x, y, width, height, True)
+        
+        #---TODO: Following code is untranslated
+
+        dstRgn = destDrawable.get_pixel_rgn(0, 0, newWidth, newHeight, True, True)
+        p_size = len(srcRgn[0,0])               
+        dest_pixels = array("B", "\x00" * (newWidth * newHeight * p_size))
+
+        # for the loop over x/y
+        src_pos = (x + srcWidth * y) * p_size
+        dest_pos = (newx + newWidth * newy) * p_size
+        
+        newval = src_pixels[src_pos: src_pos + p_size]
+        dest_pixels[dest_pos : dest_pos + p_size] = newval
+
+        # After loop, Copy the whole array back to the pixel region:
+        dstRgn[0:newWidth, 0:newHeight] = dest_pixels.tostring() 
 
 
 if __name__ == "__main__":
